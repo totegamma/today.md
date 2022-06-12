@@ -5,7 +5,7 @@ DEPS := $(SRCS:%.cpp=%.d)
 
 CC := g++
 CCFLAGS := -std=c++17
-INCLUDEPATH := 
+INCLUDEPATH := -I lib/CLI11/include/
 LIBPATH := 
 LIBS := 
 
