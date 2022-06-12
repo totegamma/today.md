@@ -1,13 +1,18 @@
 #include <iostream>
-
 #include <CLI/CLI.hpp>
+#include <stdlib.h>
 
 int main(int argc, char** argv) {
 
 	CLI::App app{"today.md: document based todo management tool"};
 
-	CLI::App* sub_init = app.add_subcommand("init", "initialize working directory");
+	app.set_config("--config", ".today.conf", "Read an ini file", true)
+		->transform(CLI::FileOnDefaultPath(getenv("HOME")));
 
+	std::string editor;
+	app.add_option("--editor", editor, "editor");
+
+	CLI::App* sub_init = app.add_subcommand("init", "initialize working directory");
 	std::string path;
 	sub_init->add_option("path", path, "deploy path")
 		-> check(CLI::ExistingDirectory);
@@ -18,12 +23,12 @@ int main(int argc, char** argv) {
 		return app.exit(e);
 	}
 
-	if (sub_init) {
+	if (app.got_subcommand(sub_init)) {
 		std::cout << "subcommand: init" << std::endl;
 		std::cout << "path: " << path << std::endl;
 	} else {
 		std::cout << "default" << std::endl;
-		std::cout << "path: " << path << std::endl;
+		std::cout << "editor: " << editor << std::endl;
 	}
 
 	return 0;
