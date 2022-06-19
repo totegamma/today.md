@@ -11,9 +11,12 @@ struct config_t {
 	std::string path;
 	std::vector<std::string> projects;
 	int projectID;
+	int newID;
 	bool configured;
 	CLI::App* sub_init;
 	CLI::App* sub_projects;
+	CLI::App* sub_switch;
+	CLI::Option* projectID_option;
 	CLI::Option* conf_option;
 	CLI::Option* projects_option;
 };
@@ -25,7 +28,7 @@ void registerOptions(CLI::App& app, config_t& conf) {
 
 	app.add_option("--editor", conf.editor, "editor")
 		-> default_val("vim");
-	app.add_option("--id", conf.projectID, "project ID")
+	conf.projectID_option = app.add_option("--id", conf.projectID, "project ID")
 		-> default_val("0");
 	conf.projects_option = app.add_option("--projects", conf.projects, "project list");
 
@@ -39,6 +42,16 @@ void registerOptions(CLI::App& app, config_t& conf) {
 
 	conf.sub_projects = app.add_subcommand("projects", "show projects");
 
+	conf.sub_switch = app.add_subcommand("switch", "switch project");
+	conf.sub_switch->add_option("id", conf.newID, "project id to switch to")
+		-> configurable(false)
+		-> required(true);
+}
+
+void writeoutConfig(CLI::App& app) {
+	std::ofstream out(std::string(getenv("HOME")) + "/.today.conf");
+	out << app.config_to_str(true, true);
+	out.close();
 }
 
 namespace commands {
@@ -49,11 +62,8 @@ namespace commands {
 			if (!conf.configured) conf.conf_option->add_result("true");			
 			conf.projects_option->add_result(path);
 
-			std::ofstream out(std::string(getenv("HOME")) + "/.today.conf");
-			out << app.config_to_str(true, true);
-			out.close();
-
 			system(std::string("git init " + path).c_str());
+			writeoutConfig(app);
 
 		} else {
 			std::cout << "project already registerd!" << std::endl;
@@ -85,6 +95,20 @@ namespace commands {
 		std::copy(output.begin(), output.end(), std::ostream_iterator<std::string>(std::cout, "\n"));
 		return 0;
 	}
+
+	int switchto(CLI::App& app, config_t& conf) {
+
+		if (conf.newID < 0 || conf.projects.size() <= conf.newID) {
+			std::cout << "project ID out of range" << std::endl;
+			return -1;
+		}
+
+		conf.projectID_option->clear();
+		conf.projectID_option->add_result(std::to_string(conf.newID));
+
+		writeoutConfig(app);
+		return 0;
+	}
 }
 
 int main(int argc, char** argv) {
@@ -111,6 +135,9 @@ int main(int argc, char** argv) {
 
 	if (app.got_subcommand(conf.sub_projects)) {
 		return commands::projects(app, conf);
+	}
+	if (app.got_subcommand(conf.sub_switch)) {
+		return commands::switchto(app, conf);
 	}
 
 	// default
