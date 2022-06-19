@@ -3,8 +3,8 @@ SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:%.cpp=%.o)
 DEPS := $(SRCS:%.cpp=%.d)
 
-CC := g++
-CCFLAGS := -std=c++17
+CC := g++-10
+CCFLAGS := -std=c++2a
 INCLUDEPATH := -I lib/CLI11/include/
 LIBPATH := 
 LIBS := 

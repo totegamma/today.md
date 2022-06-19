@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <vector>
+#include <ranges>
 
 #include <CLI/CLI.hpp>
 
@@ -12,6 +13,7 @@ struct config_t {
 	int projectID;
 	bool configured;
 	CLI::App* sub_init;
+	CLI::App* sub_projects;
 	CLI::Option* conf_option;
 	CLI::Option* projects_option;
 };
@@ -35,6 +37,8 @@ void registerOptions(CLI::App& app, config_t& conf) {
 		-> default_val(".")
 		-> configurable(false);
 
+	conf.sub_projects = app.add_subcommand("projects", "show projects");
+
 }
 
 namespace commands {
@@ -42,7 +46,7 @@ namespace commands {
 		std::string path = std::filesystem::absolute(conf.path);
 		if (std::find(conf.projects.begin(), conf.projects.end(), path) == conf.projects.end()) {
 
-			conf.conf_option->add_result("true");			
+			if (!conf.configured) conf.conf_option->add_result("true");			
 			conf.projects_option->add_result(path);
 
 			std::ofstream out(std::string(getenv("HOME")) + "/.today.conf");
@@ -59,13 +63,26 @@ namespace commands {
 	}
 
 	int today(CLI::App& app, config_t& conf) {
-
 		std::string workingDir = conf.projects[conf.projectID];
 		std::cout << workingDir << std::endl;
 		
 		std::cout << "default" << std::endl;
 		std::cout << "editor: " << conf.editor << std::endl;
 		system(std::string(conf.editor + " " + workingDir + "/today.md").c_str());
+		return 0;
+	}
+
+	int projects(CLI::App& app, config_t& conf) {
+		auto output = std::views::iota(0, (int)conf.projects.size())
+					| std::views::transform([&](int i){
+							if (i == conf.projectID) {
+								return "\e[33m[" + std::to_string(i) + "] " + conf.projects[i] + "\e[0m";
+							} else {
+								return "[" + std::to_string(i) + "] " + conf.projects[i];
+							}
+						})
+					| std::views::common;
+		std::copy(output.begin(), output.end(), std::ostream_iterator<std::string>(std::cout, "\n"));
 		return 0;
 	}
 }
@@ -90,6 +107,10 @@ int main(int argc, char** argv) {
 		std::cout << "There are no configuration file!" << std::endl;
 		std::cout << "You can create it by hand, or just do 'today.md init' to Setup automatically." << std::endl;
 		return -1;
+	}
+
+	if (app.got_subcommand(conf.sub_projects)) {
+		return commands::projects(app, conf);
 	}
 
 	// default
