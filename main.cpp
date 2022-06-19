@@ -128,13 +128,10 @@ namespace commands {
 			conf.today_option->clear();
 			conf.today_option->add_result(today);
 			writeoutConfig(app);
-			std::cout << "rotated" << std::endl;
 		}
 
 		if (!std::filesystem::exists(projectDir + "/today.md")) {
-			std::cout << "todaymd not exists!" << std::endl;
 			if (std::filesystem::exists(projectDir + "/.template.md")) {
-				std::cout << "template exists!" << std::endl;
 				std::filesystem::copy_file(projectDir + "/.template.md", projectDir + "/today.md");
 			}
 		}
@@ -193,14 +190,6 @@ int main(int argc, char** argv) {
 	config_t conf;
 
 	registerOptions(app, conf);
-
-	std::string date;
-	getDateString(date);
-	std::string time;
-	getTimeString(time);
-
-	std::cout << date << std::endl;
-	std::cout << time << std::endl;
 
 	try {
 		app.parse(argc, argv);
