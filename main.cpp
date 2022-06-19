@@ -10,6 +10,7 @@ struct config_t {
 	std::string editor;
 	std::string path;
 	std::string today;
+	std::string memo;
 	std::vector<std::string> projects;
 	int projectID;
 	int newID;
@@ -17,10 +18,12 @@ struct config_t {
 	CLI::App* sub_init;
 	CLI::App* sub_projects;
 	CLI::App* sub_switch;
+	CLI::App* sub_memo;
 	CLI::Option* projectID_option;
 	CLI::Option* conf_option;
 	CLI::Option* projects_option;
 	CLI::Option* today_option;
+	CLI::Option* memo_option;
 };
 
 void writeoutConfig(CLI::App& app) {
@@ -90,6 +93,10 @@ void registerOptions(CLI::App& app, config_t& conf) {
 	conf.sub_switch->add_option("id", conf.newID, "project id to switch to")
 		-> configurable(false)
 		-> required(true);
+
+	conf.sub_memo = app.add_subcommand("memo", "write memo");
+	conf.memo_option = conf.sub_memo->add_option("filename", conf.memo, "memo file name")
+		-> configurable(false);
 }
 
 
@@ -129,11 +136,20 @@ namespace commands {
 		return 0;
 	}
 
-/*
 	int memo(CLI::App& app, config_t& conf) {
+
+		std::string todayString; getDateString(todayString);
+		std::string path = conf.projects[conf.projectID] + "/" + todayString;
+
+		if (!std::filesystem::is_directory(path)) {
+			std::filesystem::create_directory(path);
+		}
+
+		std::string timeString; getTimeString(timeString);
+		system(std::string(conf.editor + " " + path + "/" + (conf.memo_option->empty() ? timeString : conf.memo) + ".md").c_str());
+
 		return 0;
 	}
-	*/
 
 	int projects(CLI::App& app, config_t& conf) {
 		auto output = std::views::iota(0, (int)conf.projects.size())
@@ -199,6 +215,9 @@ int main(int argc, char** argv) {
 	}
 	if (app.got_subcommand(conf.sub_switch)) {
 		return commands::switchto(app, conf);
+	}
+	if (app.got_subcommand(conf.sub_memo)) {
+		return commands::memo(app, conf);
 	}
 
 	// default
