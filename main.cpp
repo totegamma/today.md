@@ -9,6 +9,7 @@
 struct config_t {
 	std::string editor;
 	std::string path;
+	std::string today;
 	std::vector<std::string> projects;
 	int projectID;
 	int newID;
@@ -19,7 +20,45 @@ struct config_t {
 	CLI::Option* projectID_option;
 	CLI::Option* conf_option;
 	CLI::Option* projects_option;
+	CLI::Option* today_option;
 };
+
+void writeoutConfig(CLI::App& app) {
+	std::ofstream out(std::string(getenv("HOME")) + "/.today.conf");
+	out << app.config_to_str(true, true);
+	out.close();
+}
+
+void getDateString(std::string& out) {
+	time_t t = time(nullptr);
+	const tm* localTime = localtime(&t);
+	std::stringstream s;
+	s << std::setw(2) << std::setfill('0') << localTime->tm_year - 100;
+	s << std::setw(2) << std::setfill('0') << localTime->tm_mon + 1;
+	s << std::setw(2) << std::setfill('0') << localTime->tm_mday;
+	out = s.str();
+}
+
+void getTimeString(std::string& out) {
+	time_t t = time(nullptr);
+	const tm* localTime = localtime(&t);
+	std::stringstream s;
+	s << std::setw(2) << std::setfill('0') << localTime->tm_hour;
+	s << std::setw(2) << std::setfill('0') << localTime->tm_min;
+	out = s.str();
+}
+
+void rotate(config_t& conf) {
+	std::string path = conf.projects[conf.projectID] + "/" + conf.today;
+
+	if (!std::filesystem::is_directory(path)) {
+		std::filesystem::create_directory(path);
+	}
+
+	if (std::filesystem::exists(conf.projects[conf.projectID] + "/today.md")) {
+		std::filesystem::rename(conf.projects[conf.projectID] + "/today.md", path + "/today.md");
+	}
+}
 
 void registerOptions(CLI::App& app, config_t& conf) {
 
@@ -35,6 +74,11 @@ void registerOptions(CLI::App& app, config_t& conf) {
 	conf.conf_option = app.add_option("--configured", conf.configured, "hidden option")
 		-> group("");
 
+	std::string todayString; getDateString(todayString);
+	conf.today_option = app.add_option("--today", conf.today)
+		-> default_val(todayString)
+		-> group("");
+
 	conf.sub_init = app.add_subcommand("init", "initialize working directory");
 	conf.sub_init->add_option("path", conf.path, "deploy path")
 		-> default_val(".")
@@ -48,18 +92,14 @@ void registerOptions(CLI::App& app, config_t& conf) {
 		-> required(true);
 }
 
-void writeoutConfig(CLI::App& app) {
-	std::ofstream out(std::string(getenv("HOME")) + "/.today.conf");
-	out << app.config_to_str(true, true);
-	out.close();
-}
+
 
 namespace commands {
 	int init(CLI::App& app, config_t& conf) {
 		std::string path = std::filesystem::absolute(conf.path);
 		if (std::find(conf.projects.begin(), conf.projects.end(), path) == conf.projects.end()) {
 
-			if (!conf.configured) conf.conf_option->add_result("true");			
+			if (!conf.configured) conf.conf_option->add_result("true");
 			conf.projects_option->add_result(path);
 
 			system(std::string("git init " + path).c_str());
@@ -75,12 +115,25 @@ namespace commands {
 	int today(CLI::App& app, config_t& conf) {
 		std::string workingDir = conf.projects[conf.projectID];
 		std::cout << workingDir << std::endl;
+
+		std::string today; getDateString(today);
+		if (conf.today != today) {
+			rotate(conf);
+			conf.today_option->clear();
+			conf.today_option->add_result(today);
+			writeoutConfig(app);
+			std::cout << "rotated" << std::endl;
+		}
 		
-		std::cout << "default" << std::endl;
-		std::cout << "editor: " << conf.editor << std::endl;
 		system(std::string(conf.editor + " " + workingDir + "/today.md").c_str());
 		return 0;
 	}
+
+/*
+	int memo(CLI::App& app, config_t& conf) {
+		return 0;
+	}
+	*/
 
 	int projects(CLI::App& app, config_t& conf) {
 		auto output = std::views::iota(0, (int)conf.projects.size())
@@ -117,6 +170,14 @@ int main(int argc, char** argv) {
 	config_t conf;
 
 	registerOptions(app, conf);
+
+	std::string date;
+	getDateString(date);
+	std::string time;
+	getTimeString(time);
+
+	std::cout << date << std::endl;
+	std::cout << time << std::endl;
 
 	try {
 		app.parse(argc, argv);
