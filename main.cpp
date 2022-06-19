@@ -120,8 +120,7 @@ namespace commands {
 	}
 
 	int today(CLI::App& app, config_t& conf) {
-		std::string workingDir = conf.projects[conf.projectID];
-		std::cout << workingDir << std::endl;
+		std::string projectDir = conf.projects[conf.projectID];
 
 		std::string today; getDateString(today);
 		if (conf.today != today) {
@@ -131,8 +130,16 @@ namespace commands {
 			writeoutConfig(app);
 			std::cout << "rotated" << std::endl;
 		}
+
+		if (!std::filesystem::exists(projectDir + "/today.md")) {
+			std::cout << "todaymd not exists!" << std::endl;
+			if (std::filesystem::exists(projectDir + "/.template.md")) {
+				std::cout << "template exists!" << std::endl;
+				std::filesystem::copy_file(projectDir + "/.template.md", projectDir + "/today.md");
+			}
+		}
 		
-		system(std::string(conf.editor + " " + workingDir + "/today.md").c_str());
+		system(std::string(conf.editor + " " + projectDir + "/today.md").c_str());
 		return 0;
 	}
 
