@@ -6,6 +6,10 @@
 
 #include <CLI/CLI.hpp>
 
+std::string defaultTemplate = 
+	#include "defaultTemplate.txt"
+;
+
 struct config_t {
 	std::string editor;
 	std::string path;
@@ -110,6 +114,11 @@ namespace commands {
 			conf.projects_option->add_result(path);
 
 			system(std::string("git init " + path).c_str());
+
+			std::ofstream out(path + "/.template.md");
+			out << defaultTemplate;
+			out.close();
+
 			writeoutConfig(app);
 
 		} else {
