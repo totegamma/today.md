@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <vector>
 #include <ranges>
+#include <regex>
+#include <map>
 
 #include <CLI/CLI.hpp>
 
@@ -16,6 +18,7 @@ struct config_t {
 	std::string today;
 	std::string memo;
 	std::vector<std::string> projects;
+	std::vector<std::string> reflectSections;
 	int projectID;
 	int newID;
 	bool configured;
@@ -23,6 +26,7 @@ struct config_t {
 	CLI::App* sub_projects;
 	CLI::App* sub_switch;
 	CLI::App* sub_memo;
+	CLI::App* sub_reflect;
 	CLI::Option* projectID_option;
 	CLI::Option* conf_option;
 	CLI::Option* projects_option;
@@ -101,9 +105,43 @@ void registerOptions(CLI::App& app, config_t& conf) {
 	conf.sub_memo = app.add_subcommand("memo", "write memo");
 	conf.memo_option = conf.sub_memo->add_option("filename", conf.memo, "memo file name")
 		-> configurable(false);
+
+	conf.sub_reflect = app.add_subcommand("reflect", "split today.md to section file");
+	conf.sub_reflect->add_option("--sections", conf.reflectSections, "sections to reflect")
+		-> default_val("DoNext");
 }
 
+void dumpSection(std::string input, std::vector<std::string>& whitelist, std::string projectDir) {
 
+	std::regex re(R"(^# (.*))");
+	std::smatch m;
+
+	std::string sectionName = "_head";
+	std::map<std::string, std::string> sections;
+
+	for (std::string elem : input | std::views::split(std::views::single('\n')) 
+								  | std::views::transform([](auto a) {
+										auto b = a | std::views::common;
+										return std::string{b.begin(), b.end()};
+									})) {
+		if (std::regex_match(elem, m, re)) {
+			sectionName = m[1].str();
+			sections[sectionName] = "";
+		} else {
+			sections[sectionName] += elem + "\n";
+		}
+	}
+
+	for (auto elem : whitelist) {
+		if (sections.contains(elem)) {
+			std::ofstream out(projectDir + "/." + elem);
+			out << sections[elem];
+			out.close();
+		}
+
+	}
+
+}
 
 namespace commands {
 	int init(CLI::App& app, config_t& conf) {
@@ -191,6 +229,20 @@ namespace commands {
 		writeoutConfig(app);
 		return 0;
 	}
+
+	int reflect(CLI::App& app, config_t& conf) {
+		std::string projectDir = conf.projects[conf.projectID];
+
+		if (std::filesystem::exists(projectDir + "/today.md")) {
+			std::ifstream t(projectDir + "/today.md");
+			std::stringstream buffer;
+			buffer << t.rdbuf();
+			dumpSection(buffer.str(), conf.reflectSections, projectDir);
+		}
+
+		return 0;
+	}
+
 }
 
 int main(int argc, char** argv) {
@@ -223,6 +275,9 @@ int main(int argc, char** argv) {
 	}
 	if (app.got_subcommand(conf.sub_memo)) {
 		return commands::memo(app, conf);
+	}
+	if (app.got_subcommand(conf.sub_reflect)) {
+		return commands::reflect(app, conf);
 	}
 
 	// default

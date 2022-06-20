@@ -1,6 +1,6 @@
-R"(# DO
+R"(# Do
 
-# DONE
+# Done
 
-# NEXT
+# DoNext
 )"
