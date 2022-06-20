@@ -11,6 +11,9 @@
 std::string defaultTemplate = 
 	#include "defaultTemplate.txt"
 ;
+std::string pre_commit_file = 
+	#include "pre-commit"
+;
 
 struct config_t {
 	std::string editor;
@@ -153,9 +156,15 @@ namespace commands {
 
 			system(std::string("git init " + path).c_str());
 
-			std::ofstream out(path + "/.template.md");
-			out << defaultTemplate;
-			out.close();
+			std::ofstream out_template(path + "/.template.md");
+			out_template << defaultTemplate;
+			out_template.close();
+
+			std::filesystem::create_directory(path + "/.git/hooks");
+			std::ofstream out_precommit(path + "/.git/hooks/pre-commit");
+			out_precommit << pre_commit_file;
+			out_precommit.close();
+			std::filesystem::permissions(path + "/.git/hooks/pre-commit", std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 
 			writeoutConfig(app);
 
