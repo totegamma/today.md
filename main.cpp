@@ -134,7 +134,7 @@ void dumpSection(std::string input, std::vector<std::string>& whitelist, std::st
 
 	for (auto elem : whitelist) {
 		if (sections.contains(elem)) {
-			std::ofstream out(projectDir + "/." + elem);
+			std::ofstream out(projectDir + "/." + elem + ".md");
 			out << sections[elem];
 			out.close();
 		}
@@ -179,7 +179,33 @@ namespace commands {
 
 		if (!std::filesystem::exists(projectDir + "/today.md")) {
 			if (std::filesystem::exists(projectDir + "/.template.md")) {
-				std::filesystem::copy_file(projectDir + "/.template.md", projectDir + "/today.md");
+
+				std::ifstream t(projectDir + "/.template.md");
+				std::stringstream template_buf;
+				template_buf << t.rdbuf();
+				std::string template_text = template_buf.str();
+				std::string newfile;
+
+				std::regex shortcode = std::regex(R"(\{\{(.*)\}\})");
+				std::string::const_iterator cb = template_text.cbegin();
+				std::string::const_iterator cd = template_text.cend();
+
+				for (std::smatch match; std::regex_search(cb, cd, match, shortcode); cb = match[0].second) {
+					newfile += match.prefix();
+
+					std::string reflectpath = projectDir + "/." + match[1].str() + ".md";
+					if (std::filesystem::exists(reflectpath)) {
+						std::ifstream t(reflectpath);
+						std::stringstream template_buf;
+						template_buf << t.rdbuf();
+						newfile += template_buf.str();
+					}
+				}
+				newfile.append(cb, cd);
+
+				std::ofstream out(projectDir + "/today.md");
+				out << newfile;
+				out.close();
 			}
 		}
 		
