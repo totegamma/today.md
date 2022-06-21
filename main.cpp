@@ -18,7 +18,6 @@ std::string pre_commit_file =
 struct config_t {
 	std::string editor;
 	std::string path;
-	std::string today;
 	std::string memo;
 	std::vector<std::string> projects;
 	std::vector<std::string> reflectSections;
@@ -33,7 +32,6 @@ struct config_t {
 	CLI::Option* projectID_option;
 	CLI::Option* conf_option;
 	CLI::Option* projects_option;
-	CLI::Option* today_option;
 	CLI::Option* memo_option;
 };
 
@@ -62,8 +60,24 @@ std::string getTimeString() {
 	return s.str();
 }
 
+std::string getFileDate(std::string path) {
+
+	if (!std::filesystem::exists(path)) return "";
+
+	std::filesystem::file_time_type tp = std::filesystem::last_write_time(path);
+	std::chrono::sys_time st = std::chrono::file_clock::to_sys(tp);
+	std::time_t t = std::chrono::system_clock::to_time_t(st);
+	const std::tm* localTime = std::localtime(&t);
+
+	std::stringstream s;
+	s << std::setw(2) << std::setfill('0') << localTime->tm_year - 100;
+	s << std::setw(2) << std::setfill('0') << localTime->tm_mon + 1;
+	s << std::setw(2) << std::setfill('0') << localTime->tm_mday;
+	return s.str();
+}
+
 void rotate(config_t& conf) {
-	std::string path = conf.projects[conf.projectID] + "/" + conf.today;
+	std::string path = conf.projects[conf.projectID] + "/" + getFileDate(conf.projects[conf.projectID] + "/today.md");
 
 	if (!std::filesystem::is_directory(path)) {
 		std::filesystem::create_directory(path);
@@ -86,10 +100,6 @@ void registerOptions(CLI::App& app, config_t& conf) {
 	conf.projects_option = app.add_option("--projects", conf.projects, "project list");
 
 	conf.conf_option = app.add_option("--configured", conf.configured, "hidden option")
-		-> group("");
-
-	conf.today_option = app.add_option("--today", conf.today)
-		-> default_val(getDateString())
 		-> group("");
 
 	conf.sub_init = app.add_subcommand("init", "initialize working directory");
@@ -178,10 +188,8 @@ namespace commands {
 		std::string projectDir = conf.projects[conf.projectID];
 
 		std::string today = getDateString();
-		if (conf.today != today) {
+		if (getFileDate(projectDir + "/today.md") != today) {
 			rotate(conf);
-			conf.today_option->clear();
-			conf.today_option->add_result(today);
 			writeoutConfig(app);
 		}
 
@@ -276,6 +284,8 @@ namespace commands {
 	}
 
 }
+
+
 
 int main(int argc, char** argv) {
 
