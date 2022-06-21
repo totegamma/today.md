@@ -43,23 +43,23 @@ void writeoutConfig(CLI::App& app) {
 	out.close();
 }
 
-void getDateString(std::string& out) {
+std::string getDateString() {
 	time_t t = time(nullptr);
 	const tm* localTime = localtime(&t);
 	std::stringstream s;
 	s << std::setw(2) << std::setfill('0') << localTime->tm_year - 100;
 	s << std::setw(2) << std::setfill('0') << localTime->tm_mon + 1;
 	s << std::setw(2) << std::setfill('0') << localTime->tm_mday;
-	out = s.str();
+	return s.str();
 }
 
-void getTimeString(std::string& out) {
+std::string getTimeString() {
 	time_t t = time(nullptr);
 	const tm* localTime = localtime(&t);
 	std::stringstream s;
 	s << std::setw(2) << std::setfill('0') << localTime->tm_hour;
 	s << std::setw(2) << std::setfill('0') << localTime->tm_min;
-	out = s.str();
+	return s.str();
 }
 
 void rotate(config_t& conf) {
@@ -88,9 +88,8 @@ void registerOptions(CLI::App& app, config_t& conf) {
 	conf.conf_option = app.add_option("--configured", conf.configured, "hidden option")
 		-> group("");
 
-	std::string todayString; getDateString(todayString);
 	conf.today_option = app.add_option("--today", conf.today)
-		-> default_val(todayString)
+		-> default_val(getDateString())
 		-> group("");
 
 	conf.sub_init = app.add_subcommand("init", "initialize working directory");
@@ -178,7 +177,7 @@ namespace commands {
 	int today(CLI::App& app, config_t& conf) {
 		std::string projectDir = conf.projects[conf.projectID];
 
-		std::string today; getDateString(today);
+		std::string today = getDateString();
 		if (conf.today != today) {
 			rotate(conf);
 			conf.today_option->clear();
@@ -224,15 +223,13 @@ namespace commands {
 
 	int memo(CLI::App& app, config_t& conf) {
 
-		std::string todayString; getDateString(todayString);
-		std::string path = conf.projects[conf.projectID] + "/" + todayString;
+		std::string path = conf.projects[conf.projectID] + "/" + getDateString();
 
 		if (!std::filesystem::is_directory(path)) {
 			std::filesystem::create_directory(path);
 		}
 
-		std::string timeString; getTimeString(timeString);
-		system(std::string(conf.editor + " " + path + "/" + (conf.memo_option->empty() ? timeString : conf.memo) + ".md").c_str());
+		system(std::string(conf.editor + " " + path + "/" + (conf.memo_option->empty() ? getTimeString() : conf.memo) + ".md").c_str());
 
 		return 0;
 	}
