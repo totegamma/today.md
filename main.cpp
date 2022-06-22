@@ -12,7 +12,7 @@ std::string defaultTemplate =
 	#include "defaultTemplate.txt"
 ;
 std::string pre_commit_file = 
-	#include "pre-commit"
+	#include "pre-commit.txt"
 ;
 
 struct config_t {
