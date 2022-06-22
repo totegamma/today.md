@@ -146,9 +146,11 @@ void dumpSection(std::string input, std::vector<std::string>& whitelist, std::st
 
 	for (auto elem : whitelist) {
 		if (sections.contains(elem)) {
-			std::ofstream out(projectDir + "/." + elem + ".md");
+			std::string path = projectDir + "/." + elem + ".md";
+			std::ofstream out(path);
 			out << sections[elem];
 			out.close();
+			std::cout << path << std::endl;
 		}
 
 	}
