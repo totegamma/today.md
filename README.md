@@ -62,7 +62,7 @@ You can specify the memo name (the default value is timestamp).
 It would be nice to create alias `alias memo today memo`
 
 ## Install & QuickStart
-`clone` then `make` then `sudo make install`
+`git clone --recursive` then `make` then `sudo make install`
 You may need to adjust the g++ version in the makefile. 
 
 After tool instration, you have to create at least 1 todo project with
