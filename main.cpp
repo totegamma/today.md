@@ -186,51 +186,6 @@ namespace commands {
 		return 0;
 	}
 
-	int today(CLI::App& app, config_t& conf) {
-		std::string projectDir = conf.projects[conf.projectID];
-
-		std::string today = getDateString();
-		if (getFileDate(projectDir + "/today.md") != today) {
-			rotate(conf);
-			writeoutConfig(app);
-		}
-
-		if (!std::filesystem::exists(projectDir + "/today.md")) {
-			if (std::filesystem::exists(projectDir + "/.template.md")) {
-
-				std::ifstream t(projectDir + "/.template.md");
-				std::stringstream template_buf;
-				template_buf << t.rdbuf();
-				std::string template_text = template_buf.str();
-				std::string newfile;
-
-				std::regex shortcode = std::regex(R"(\{\{(.*)\}\})");
-				std::string::const_iterator cb = template_text.cbegin();
-				std::string::const_iterator cd = template_text.cend();
-
-				for (std::smatch match; std::regex_search(cb, cd, match, shortcode); cb = match[0].second) {
-					newfile += match.prefix();
-
-					std::string reflectpath = projectDir + "/." + match[1].str() + ".md";
-					if (std::filesystem::exists(reflectpath)) {
-						std::ifstream t(reflectpath);
-						std::stringstream template_buf;
-						template_buf << t.rdbuf();
-						newfile += template_buf.str();
-					}
-				}
-				newfile.append(cb, cd);
-
-				std::ofstream out(projectDir + "/today.md");
-				out << newfile;
-				out.close();
-			}
-		}
-		
-		system(std::string(conf.editor + " " + projectDir + "/today.md").c_str());
-		return 0;
-	}
-
 	int memo(CLI::App& app, config_t& conf) {
 
 		std::string path = conf.projects[conf.projectID] + "/" + getDateString();
@@ -282,6 +237,51 @@ namespace commands {
 			dumpSection(buffer.str(), conf.reflectSections, projectDir);
 		}
 
+		return 0;
+	}
+
+	int today(CLI::App& app, config_t& conf) {
+		std::string projectDir = conf.projects[conf.projectID];
+
+		std::string today = getDateString();
+		if (getFileDate(projectDir + "/today.md") != today) {
+			reflect(app, conf);
+			rotate(conf);
+		}
+
+		if (!std::filesystem::exists(projectDir + "/today.md")) {
+			if (std::filesystem::exists(projectDir + "/.template.md")) {
+
+				std::ifstream t(projectDir + "/.template.md");
+				std::stringstream template_buf;
+				template_buf << t.rdbuf();
+				std::string template_text = template_buf.str();
+				std::string newfile;
+
+				std::regex shortcode = std::regex(R"(\{\{(.*)\}\})");
+				std::string::const_iterator cb = template_text.cbegin();
+				std::string::const_iterator cd = template_text.cend();
+
+				for (std::smatch match; std::regex_search(cb, cd, match, shortcode); cb = match[0].second) {
+					newfile += match.prefix();
+
+					std::string reflectpath = projectDir + "/." + match[1].str() + ".md";
+					if (std::filesystem::exists(reflectpath)) {
+						std::ifstream t(reflectpath);
+						std::stringstream template_buf;
+						template_buf << t.rdbuf();
+						newfile += template_buf.str();
+					}
+				}
+				newfile.append(cb, cd);
+
+				std::ofstream out(projectDir + "/today.md");
+				out << newfile;
+				out.close();
+			}
+		}
+		
+		system(std::string(conf.editor + " " + projectDir + "/today.md").c_str());
 		return 0;
 	}
 
