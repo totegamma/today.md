@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <iostream>
+#include <unistd.h>
 #include <cstdlib>
 #include <vector>
 #include <ranges>
@@ -29,6 +30,7 @@ struct config_t {
 	CLI::App* sub_switch;
 	CLI::App* sub_memo;
 	CLI::App* sub_reflect;
+	CLI::App* sub_currprj;
 	CLI::Option* projectID_option;
 	CLI::Option* conf_option;
 	CLI::Option* projects_option;
@@ -121,6 +123,8 @@ void registerOptions(CLI::App& app, config_t& conf) {
 	conf.sub_reflect = app.add_subcommand("reflect", "split today.md to section file");
 	conf.sub_reflect->add_option("--sections", conf.reflectSections, "sections to reflect")
 		-> default_val("DoNext");
+
+	conf.sub_currprj = app.add_subcommand("currprj", "show current project directory");
 }
 
 void dumpSection(std::string input, std::vector<std::string>& whitelist, std::string projectDir) {
@@ -240,6 +244,11 @@ namespace commands {
 		return 0;
 	}
 
+	int currprj(CLI::App& app, config_t& conf) {
+		std::cout << conf.projects[conf.projectID] << std::endl;
+		return 0;
+	}
+
 	int today(CLI::App& app, config_t& conf) {
 		std::string projectDir = conf.projects[conf.projectID];
 
@@ -285,6 +294,8 @@ namespace commands {
 		return 0;
 	}
 
+	
+
 }
 
 
@@ -322,6 +333,9 @@ int main(int argc, char** argv) {
 	}
 	if (app.got_subcommand(conf.sub_reflect)) {
 		return commands::reflect(app, conf);
+	}
+	if (app.got_subcommand(conf.sub_currprj)) {
+		return commands::currprj(app, conf);
 	}
 
 	// default
