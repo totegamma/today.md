@@ -61,7 +61,6 @@ std::string getTimeString() {
 }
 
 std::string getFileDate(std::string path) {
-
     if (!std::filesystem::exists(path)) return "";
 
     std::filesystem::file_time_type tp = std::filesystem::last_write_time(path);
@@ -89,7 +88,6 @@ void rotate(config_t& conf) {
 }
 
 void registerOptions(CLI::App& app, config_t& conf) {
-
     app.set_config("--config", ".today.conf", "Read an ini file")
         -> transform(CLI::FileOnDefaultPath(getenv("HOME"), false));
 
@@ -126,7 +124,6 @@ void splitIntoSections(std::string input, std::map<std::string, std::string>& se
     std::smatch m;
 
     std::string sectionName = "_head";
-    // std::map<std::string, std::string> sections;
 
     for (std::string elem : input | std::views::split(std::views::single('\n')) 
                                   | std::views::transform([](auto a) {
@@ -172,7 +169,6 @@ namespace commands {
     }
 
     int memo(CLI::App& app, config_t& conf) {
-
         std::string path = conf.projects[conf.projectID] + "/" + getDateString();
 
         if (!std::filesystem::is_directory(path)) {
@@ -199,7 +195,6 @@ namespace commands {
     }
 
     int switchto(CLI::App& app, config_t& conf) {
-
         if (conf.newID < 0 || conf.projects.size() <= conf.newID) {
             std::cout << "project ID out of range" << std::endl;
             return -1;
@@ -212,40 +207,12 @@ namespace commands {
         return 0;
     }
 
-    /*
-    int reflect(CLI::App& app, config_t& conf) {
-        std::string projectDir = conf.projects[conf.projectID];
-
-        if (std::filesystem::exists(projectDir + "/today.md")) {
-            std::ifstream t(projectDir + "/today.md");
-            std::stringstream buffer;
-            buffer << t.rdbuf();
-            dumpSection(buffer.str(), conf.reflectSections, projectDir);
-        }
-        return 0;
-    }
-    */
-
     int currprj(CLI::App& app, config_t& conf) {
         std::cout << conf.projects[conf.projectID] << std::endl;
         return 0;
     }
 
     int today(CLI::App& app, config_t& conf) {
-/*
-void dumpSection(std::string input, std::vector<std::string>& whitelist, std::string projectDir) {
-    for (auto elem : whitelist) {
-        if (sections.contains(elem)) {
-            std::string path = projectDir + "/." + elem + ".md";
-            std::ofstream out(path);
-            out << sections[elem];
-            out.close();
-            std::cout << path << std::endl;
-        }
-
-    }
-}
-*/
         std::map<std::string, std::string> sections;
         std::string projectDir = conf.projects[conf.projectID];
 
@@ -273,17 +240,7 @@ void dumpSection(std::string input, std::vector<std::string>& whitelist, std::st
 
                 for (std::smatch match; std::regex_search(cb, cd, match, shortcode); cb = match[0].second) {
                     newfile += match.prefix();
-
-                    newfile += sections[match[1].str()];
-                    /*
-                    std::string reflectpath = projectDir + "/." + match[1].str() + ".md";
-                    if (std::filesystem::exists(reflectpath)) {
-                        std::ifstream t(reflectpath);
-                        std::stringstream template_buf;
-                        template_buf << t.rdbuf();
-                        newfile += template_buf.str();
-                    }
-                    */
+                    newfile += sections[match[1].str()]; // TODO: add error handling
                 }
                 newfile.append(cb, cd);
 
@@ -297,10 +254,7 @@ void dumpSection(std::string input, std::vector<std::string>& whitelist, std::st
     }
 }
 
-
-
 int main(int argc, char** argv) {
-
     CLI::App app{"today.md: document based todo management tool"};
     config_t conf;
 
