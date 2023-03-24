@@ -240,7 +240,7 @@ namespace commands {
 
                 for (std::smatch match; std::regex_search(cb, cd, match, shortcode); cb = match[0].second) {
                     newfile += match.prefix();
-                    newfile += sections[match[1].str()]; // TODO: add error handling
+                    newfile += sections[match[1].str()];
                 }
                 newfile.append(cb, cd);
 
