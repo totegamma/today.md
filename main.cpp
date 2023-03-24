@@ -21,6 +21,7 @@ struct config_t {
     std::string path;
     std::string memo;
     std::vector<std::string> projects;
+    std::string archivePathPattern;
     int projectID;
     int newID;
     bool configured;
@@ -29,6 +30,7 @@ struct config_t {
     CLI::App* sub_switch;
     CLI::App* sub_memo;
     CLI::App* sub_currprj;
+    CLI::Option* archivePathPattern_option;
     CLI::Option* projectID_option;
     CLI::Option* conf_option;
     CLI::Option* projects_option;
@@ -41,16 +43,6 @@ void writeoutConfig(CLI::App& app) {
     out.close();
 }
 
-std::string getDateString() {
-    time_t t = time(nullptr);
-    const tm* localTime = localtime(&t);
-    std::stringstream s;
-    s << std::setw(2) << std::setfill('0') << localTime->tm_year - 100;
-    s << std::setw(2) << std::setfill('0') << localTime->tm_mon + 1;
-    s << std::setw(2) << std::setfill('0') << localTime->tm_mday;
-    return s.str();
-}
-
 std::string getTimeString() {
     time_t t = time(nullptr);
     const tm* localTime = localtime(&t);
@@ -60,30 +52,36 @@ std::string getTimeString() {
     return s.str();
 }
 
-std::string getFileDate(std::string path) {
+std::string getDateString(std::string format) {
+    const std::time_t t = std::time(nullptr);
+    const std::tm* localtime = std::localtime(&t);
+    std::stringstream s;
+    s << std::put_time(localtime, format.c_str());
+    return s.str();
+}
+
+std::string getFileDate(std::string path, std::string format) {
     if (!std::filesystem::exists(path)) return "";
 
     std::filesystem::file_time_type tp = std::filesystem::last_write_time(path);
     std::chrono::sys_time st = std::chrono::file_clock::to_sys(tp);
     std::time_t t = std::chrono::system_clock::to_time_t(st);
-    const std::tm* localTime = std::localtime(&t);
+    const std::tm* localtime = std::localtime(&t);
 
     std::stringstream s;
-    s << std::setw(2) << std::setfill('0') << localTime->tm_year - 100;
-    s << std::setw(2) << std::setfill('0') << localTime->tm_mon + 1;
-    s << std::setw(2) << std::setfill('0') << localTime->tm_mday;
+    s << std::put_time(localtime, format.c_str());
     return s.str();
 }
 
 void rotate(config_t& conf) {
-    std::string path = conf.projects[conf.projectID] + "/" + getFileDate(conf.projects[conf.projectID] + "/today.md");
+    std::string path = conf.projects[conf.projectID] + getFileDate(conf.projects[conf.projectID] + "/today.md", conf.archivePathPattern);
 
     if (!std::filesystem::is_directory(path)) {
-        std::filesystem::create_directory(path);
+        std::filesystem::create_directories(path);
     }
 
-    if (std::filesystem::exists(conf.projects[conf.projectID] + "/today.md")) {
-        std::filesystem::rename(conf.projects[conf.projectID] + "/today.md", path + "/today.md");
+    if (std::filesystem::exists(conf.projects[conf.projectID] + "today.md")) {
+        std::filesystem::rename(conf.projects[conf.projectID] + "today.md", path + "today.md");
     }
 }
 
@@ -93,6 +91,8 @@ void registerOptions(CLI::App& app, config_t& conf) {
 
     app.add_option("--editor", conf.editor, "editor")
         -> default_val("vim");
+    conf.archivePathPattern_option = app.add_option("--archivePathPattern", conf.archivePathPattern, "archive path pattern")
+        -> default_val("%Y/%m/%d/");
     conf.projectID_option = app.add_option("--id", conf.projectID, "project ID")
         -> default_val("0");
     conf.projects_option = app.add_option("--projects", conf.projects, "project list");
@@ -142,6 +142,8 @@ void splitIntoSections(std::string input, std::map<std::string, std::string>& se
 namespace commands {
     int init(CLI::App& app, config_t& conf) {
         std::string path = std::filesystem::absolute(conf.path);
+        if (path[path.size()-1] == '.')
+            path = path.substr(0, path.size() -1);
         if (std::find(conf.projects.begin(), conf.projects.end(), path) == conf.projects.end()) {
 
             if (!conf.configured) conf.conf_option->add_result("true");
@@ -153,7 +155,7 @@ namespace commands {
             out_template << defaultTemplate;
             out_template.close();
 
-            std::filesystem::create_directory(path + "/.git/hooks");
+            std::filesystem::create_directories(path + "/.git/hooks");
             std::ofstream out_precommit(path + "/.git/hooks/pre-commit");
             out_precommit << pre_commit_file;
             out_precommit.close();
@@ -169,13 +171,13 @@ namespace commands {
     }
 
     int memo(CLI::App& app, config_t& conf) {
-        std::string path = conf.projects[conf.projectID] + "/" + getDateString();
+        std::string path = conf.projects[conf.projectID] + getDateString(conf.archivePathPattern);
 
         if (!std::filesystem::is_directory(path)) {
-            std::filesystem::create_directory(path);
+            std::filesystem::create_directories(path);
         }
 
-        system(std::string(conf.editor + " " + path + "/" + (conf.memo_option->empty() ? getTimeString() : conf.memo) + ".md").c_str());
+        system(std::string(conf.editor + " " + path + (conf.memo_option->empty() ? getTimeString() : conf.memo) + ".md").c_str());
 
         return 0;
     }
@@ -216,8 +218,7 @@ namespace commands {
         std::map<std::string, std::string> sections;
         std::string projectDir = conf.projects[conf.projectID];
 
-        std::string today = getDateString();
-        if (getFileDate(projectDir + "/today.md") != today) {
+        if (getFileDate(projectDir + "/today.md", conf.archivePathPattern) != getDateString(conf.archivePathPattern)) {
             std::ifstream t(projectDir + "/today.md");
             std::stringstream buffer;
             buffer << t.rdbuf();
@@ -271,7 +272,7 @@ int main(int argc, char** argv) {
 
     if (!conf.configured) {
         std::cout << "There are no configuration file!" << std::endl;
-        std::cout << "You can create it by hand, or just do 'today.md init' to Setup automatically." << std::endl;
+        std::cout << "You can create it by hand, or just do 'today init' to Setup automatically." << std::endl;
         return -1;
     }
 
