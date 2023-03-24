@@ -127,8 +127,7 @@ void registerOptions(CLI::App& app, config_t& conf) {
     conf.sub_currprj = app.add_subcommand("currprj", "show current project directory");
 }
 
-void dumpSection(std::string input, std::vector<std::string>& whitelist, std::string projectDir) {
-
+void splitIntoSections(std::string input, std::map<std::string, std::string>& sections) {
     std::regex re(R"(^# (.*))");
     std::smatch m;
 
@@ -148,18 +147,9 @@ void dumpSection(std::string input, std::vector<std::string>& whitelist, std::st
         }
     }
 
-    for (auto elem : whitelist) {
-        if (sections.contains(elem)) {
-            std::string path = projectDir + "/." + elem + ".md";
-            std::ofstream out(path);
-            out << sections[elem];
-            out.close();
-            std::cout << path << std::endl;
-        }
-
-    }
-
 }
+
+
 
 namespace commands {
     int init(CLI::App& app, config_t& conf) {
@@ -240,7 +230,6 @@ namespace commands {
             buffer << t.rdbuf();
             dumpSection(buffer.str(), conf.reflectSections, projectDir);
         }
-
         return 0;
     }
 
@@ -250,6 +239,20 @@ namespace commands {
     }
 
     int today(CLI::App& app, config_t& conf) {
+/*
+void dumpSection(std::string input, std::vector<std::string>& whitelist, std::string projectDir) {
+    for (auto elem : whitelist) {
+        if (sections.contains(elem)) {
+            std::string path = projectDir + "/." + elem + ".md";
+            std::ofstream out(path);
+            out << sections[elem];
+            out.close();
+            std::cout << path << std::endl;
+        }
+
+    }
+}
+*/
         std::string projectDir = conf.projects[conf.projectID];
 
         std::string today = getDateString();
@@ -289,13 +292,9 @@ namespace commands {
                 out.close();
             }
         }
-        
         system(std::string(conf.editor + " " + projectDir + "/today.md").c_str());
         return 0;
     }
-
-    
-
 }
 
 
